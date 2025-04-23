@@ -151,6 +151,26 @@ module Detector
           end
         end
       end
+      
+      def replication_available?
+        return nil unless connection && info
+        
+        begin
+          # Check if this is a master in a replication setup
+          if info['role'] == 'master'
+            return true
+          end
+          
+          # Check if server has replication enabled
+          if info['connected_slaves'].to_i > 0 || info['slave_read_only'] == '0'
+            return true
+          end
+          
+          false
+        rescue => e
+          nil
+        end
+      end
     end
   end
   

@@ -92,13 +92,48 @@ module Detector
       
       def databases
         return [] unless connection
-        @databases ||= connection.exec("SELECT datname, pg_size_pretty(pg_database_size(datname)) as size, 
-                                      pg_database_size(datname) as raw_size 
-                                      FROM pg_database 
-                                      WHERE datistemplate = false 
-                                      ORDER BY raw_size DESC").map do |row|
-          { name: row['datname'], size: row['size'], raw_size: row['raw_size'].to_i }
+        result = []
+        
+        # Get the list of databases and their sizes
+        db_list = connection.exec("SELECT datname, pg_size_pretty(pg_database_size(datname)) as size, 
+                                   pg_database_size(datname) as raw_size 
+                                   FROM pg_database 
+                                   WHERE datistemplate = false 
+                                   ORDER BY raw_size DESC")
+        
+        # For each database, get table count
+        db_list.each do |row|
+          db_name = row['datname']
+          
+          # Skip system databases or databases we can't connect to
+          next if ['postgres', 'template0', 'template1'].include?(db_name)
+          
+          # Get table count for this database
+          table_count = 0
+          
+          begin
+            # Create a temporary connection to count tables
+            temp_conn = PG::Connection.new(host: host, port: port, user: uri.user, 
+                                          password: uri.password, dbname: db_name) rescue nil
+                                          
+            if temp_conn
+              table_count = temp_conn.exec("SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public'").first['count'].to_i
+              temp_conn.close
+            end
+          rescue
+            # Skip if we can't connect
+            next
+          end
+          
+          result << { 
+            name: db_name, 
+            size: row['size'], 
+            raw_size: row['raw_size'].to_i,
+            table_count: table_count
+          }
         end
+        
+        @databases = result
       end
       
       def connection_count
@@ -156,6 +191,17 @@ module Detector
               end
             end
           end
+        end
+      end
+      
+      def replication_available?
+        return nil unless connection
+        
+        begin
+          replication_roles = connection.exec("SELECT rolname, rolreplication FROM pg_roles WHERE rolreplication = true;")
+          !replication_roles.values.empty?
+        rescue => e
+          nil
         end
       end
     end

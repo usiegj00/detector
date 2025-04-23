@@ -44,15 +44,22 @@ module Detector
       
       def databases
         return [] unless connection
-        @databases ||= connection.query("SELECT schema_name AS name,
+        @databases ||= connection.query("SELECT 
+                                      schema_name AS name,
                                       FORMAT(SUM(data_length + index_length) / 1024 / 1024, 2) AS size_mb,
-                                      SUM(data_length + index_length) AS raw_size
+                                      SUM(data_length + index_length) AS raw_size,
+                                      COUNT(table_name) AS table_count
                                       FROM information_schema.SCHEMATA
-                                      JOIN information_schema.TABLES ON table_schema = schema_name
+                                      LEFT JOIN information_schema.TABLES ON table_schema = schema_name
                                       WHERE schema_name NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')
                                       GROUP BY schema_name
                                       ORDER BY raw_size DESC").map do |row|
-          { name: row['name'], size: "#{row['size_mb']} MB", raw_size: row['raw_size'].to_i }
+          { 
+            name: row['name'], 
+            size: "#{row['size_mb']} MB", 
+            raw_size: row['raw_size'].to_i,
+            table_count: row['table_count'].to_i
+          }
         end
       end
       
@@ -152,6 +159,32 @@ module Detector
           "Read-only access"
         else
           "Limited access"
+        end
+      end
+      
+      def replication_available?
+        return nil unless connection
+        
+        begin
+          # Check master status
+          master_result = connection.query("SHOW MASTER STATUS")
+          return true if master_result.count > 0
+          
+          # Check if this is a slave
+          slave_result = connection.query("SHOW SLAVE STATUS")
+          return true if slave_result.count > 0
+          
+          # Check if replication user exists or if binary logging is enabled
+          repl_users = connection.query("SELECT user FROM mysql.user WHERE Repl_slave_priv = 'Y'")
+          return true if repl_users.count > 0
+          
+          # Check if binary logging is enabled (needed for replication)
+          binary_log = connection.query("SHOW VARIABLES LIKE 'log_bin'").first
+          return true if binary_log && binary_log['Value'] && binary_log['Value'].downcase == 'on'
+          
+          false
+        rescue => e
+          nil
         end
       end
     end

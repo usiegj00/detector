@@ -31,7 +31,8 @@ module Detector
           db_list.each do |db_name|
             size_query = "SELECT 
                             IFNULL(FORMAT(SUM(data_length + index_length) / 1024 / 1024, 2), '0.00') AS size_mb,
-                            IFNULL(SUM(data_length + index_length), 0) AS raw_size
+                            IFNULL(SUM(data_length + index_length), 0) AS raw_size,
+                            COUNT(table_name) AS table_count
                           FROM information_schema.TABLES 
                           WHERE table_schema = '#{db_name}'"
             
@@ -39,7 +40,8 @@ module Detector
             result << { 
               name: db_name, 
               size: "#{size_data['size_mb']} MB", 
-              raw_size: size_data['raw_size'].to_i 
+              raw_size: size_data['raw_size'].to_i,
+              table_count: size_data['table_count'].to_i
             }
           end
           
