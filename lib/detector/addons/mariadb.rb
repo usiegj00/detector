@@ -11,6 +11,12 @@ module Detector
         { sql: true, kv: true, url: url, kind: :mariadb, databases: true, tables: true }
       end
     
+      # Cache for database requests
+      def initialize(url)
+        super
+        @cache = {}
+      end
+    
       def connection
         # Override the MySQL connection method with MariaDB-specific settings
         # Handle URI path correctly - strip leading slash if present
@@ -18,7 +24,7 @@ module Detector
         
         begin
           # MariaDB-specific connection with fixed init command syntax
-          Mysql2::Client.new(
+          conn = Mysql2::Client.new(
             host: host,
             username: uri.user,
             password: uri.password,
@@ -27,21 +33,38 @@ module Detector
             connect_timeout: 15,
             read_timeout: 30,
             write_timeout: 30
-            # MariaDB doesn't like multiple statements in init_command
+            # No init_command - caused issues with MariaDB
           )
+          
+          # Test the connection with a simple query
+          conn.query("SELECT 1")
+          conn
         rescue Mysql2::Error => e
           puts "MariaDB connection error: #{e.message}" if ENV['DETECTOR_DEBUG']
-          nil
-        rescue => e
-          puts "General connection error: #{e.class} - #{e.message}" if ENV['DETECTOR_DEBUG']
           nil
         end
       end
       
       def info
+        # Cache the info to avoid repeated queries
+        return @cache[:info] if @cache[:info]
+        
+        # If we have a database and user but no connection, return basic info
+        if connection.nil? && uri.path && uri.user
+          db_name = uri.path.sub(/^\//, '')
+          @cache[:info] = {
+            'version' => 'Unknown (connection issue)',
+            'database' => db_name,
+            'user' => "#{uri.user}@remote"
+          }
+          return @cache[:info]
+        end
+        
+        # Otherwise try to get info from connection
         return nil unless connection
         begin
-          connection.query("SELECT VERSION() AS version, DATABASE() AS `database`, USER() AS user").first
+          @cache[:info] = connection.query("SELECT VERSION() AS version, DATABASE() AS `database`, USER() AS user").first
+          return @cache[:info]
         rescue Mysql2::Error => e
           if e.error_number == 1226 # User has exceeded max_user_connections
             {
@@ -58,45 +81,49 @@ module Detector
       end
       
       def version
+        # Cache the version to avoid repeated queries
+        return @cache[:version] if @cache[:version]
+        
         return nil unless info
         begin
-          "MariaDB #{info['version']} on #{info['database']} (#{info['user']})"
+          @cache[:version] = "MariaDB #{info['version']} on #{info['database']} (#{info['user']})"
+          return @cache[:version]
         rescue => e
-          "MariaDB (connection error: #{e.message})"
+          @cache[:version] = "MariaDB (connection error: #{e.message})"
+          return @cache[:version]
         end
       end
       
       def databases
+        # Cache the databases to avoid repeated queries
+        return @cache[:databases] if @cache[:databases]
+        
         return [] unless connection
         begin
-          # First get all databases
-          db_list = connection.query("SELECT schema_name AS name 
-                                     FROM information_schema.SCHEMATA 
-                                     WHERE schema_name NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')").map do |row|
-            row['name']
-          end
-          
-          # For each database, get its size
-          result = []
-          db_list.each do |db_name|
-            size_query = "SELECT 
-                            IFNULL(FORMAT(SUM(data_length + index_length) / 1024 / 1024, 2), '0.00') AS size_mb,
-                            IFNULL(SUM(data_length + index_length), 0) AS raw_size,
-                            COUNT(table_name) AS table_count
-                          FROM information_schema.TABLES 
-                          WHERE table_schema = '#{db_name}'"
-            
-            size_data = connection.query(size_query).first
-            result << { 
-              name: db_name, 
-              size: "#{size_data['size_mb']} MB", 
-              raw_size: size_data['raw_size'].to_i,
-              table_count: size_data['table_count'].to_i
+          # Get all databases at once to reduce connections
+          query = "SELECT 
+                    s.schema_name AS name,
+                    IFNULL(FORMAT(SUM(t.data_length + t.index_length) / 1024 / 1024, 2), '0.00') AS size_mb,
+                    IFNULL(SUM(t.data_length + t.index_length), 0) AS raw_size,
+                    COUNT(t.table_name) AS table_count
+                  FROM information_schema.SCHEMATA s
+                  LEFT JOIN information_schema.TABLES t ON t.table_schema = s.schema_name
+                  WHERE s.schema_name NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')
+                  GROUP BY s.schema_name
+                  ORDER BY raw_size DESC"
+                  
+          result = connection.query(query).map do |row|
+            { 
+              name: row['name'], 
+              size: "#{row['size_mb']} MB", 
+              raw_size: row['raw_size'].to_i,
+              table_count: row['table_count'].to_i
             }
           end
           
           # Sort by size
-          @databases = result.sort_by { |db| -db[:raw_size] }
+          @cache[:databases] = result.sort_by { |db| -db[:raw_size] }
+          return @cache[:databases]
         rescue => e
           puts "Error getting databases: #{e.message}"
           []
@@ -104,14 +131,52 @@ module Detector
       end
       
       def connection_info
-        return {
-          connection_count: { user: "LIMIT EXCEEDED", global: "N/A" },
-          connection_limits: { user: "EXCEEDED", global: "N/A" },
-          error: "Error: User has exceeded max_user_connections limit"
-        } if connection.nil? && (ENV['DETECTOR_DEBUG'] && ENV['DETECTOR_DEBUG'].include?('exceeded'))
+        # Cache connection info to avoid repeated queries
+        return @cache[:connection_info] if @cache[:connection_info]
         
-        # Try to get connection info as normal
-        super
+        # If no connection is available but debug mode indicates exceeded connections
+        if connection.nil? && ENV['DETECTOR_DEBUG'] && ENV['DETECTOR_DEBUG'].include?('exceeded')
+          @cache[:connection_info] = {
+            connection_count: { user: "LIMIT EXCEEDED", global: "N/A" },
+            connection_limits: { user: "EXCEEDED", global: "N/A" },
+            error: "Error: User has exceeded max_user_connections limit"
+          }
+          return @cache[:connection_info]
+        end
+        
+        # If connection is available, get actual connection info
+        return nil unless connection
+        
+        begin
+          user_limit = connection.query("SELECT @@max_user_connections AS `limit`").first['limit'].to_i
+          user_count = connection.query("SELECT COUNT(*) AS count FROM information_schema.PROCESSLIST WHERE user = USER()").first['count'].to_i
+          global_limit = connection.query("SELECT @@max_connections AS `limit`").first['limit'].to_i
+          global_count = connection.query("SELECT COUNT(*) AS count FROM information_schema.PROCESSLIST").first['count'].to_i
+          
+          # If user limit is 0, it means no specific per-user limit (use global)
+          user_limit = global_limit if user_limit == 0
+          
+          @cache[:connection_info] = {
+            connection_count: { user: user_count, global: global_count },
+            connection_limits: { user: user_limit, global: global_limit }
+          }
+          return @cache[:connection_info]
+        rescue Mysql2::Error => e
+          if e.error_number == 1226 # User has exceeded max_user_connections
+            @cache[:connection_info] = {
+              connection_count: { user: "LIMIT EXCEEDED", global: "N/A" },
+              connection_limits: { user: "EXCEEDED", global: "N/A" },
+              error: "Error: User has exceeded max_user_connections limit"
+            }
+            return @cache[:connection_info]
+          else
+            puts "Error getting connection info: #{e.message}" if ENV['DETECTOR_DEBUG']
+            nil
+          end
+        rescue => e
+          puts "Error getting connection info: #{e.message}" if ENV['DETECTOR_DEBUG']
+          nil
+        end
       end
       
       def tables(database_name)
