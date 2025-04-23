@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0 (2025-04-24)
+
+* Improved transport detection architecture with protocol-specific addon methods
+* Added UDP-based protocol support
+* Added proper socket handling for connection testing
+* Enhanced region detection with support for 70+ cloud regions from AWS, Azure, and GCP
+* Added geographic location and ASN detection
+* Added user access level detection for all database types
+* Added infrastructure detection for 30+ cloud providers
+* Added logger and ostruct dependencies for Ruby 3.5.0 compatibility
+* Updated Redis dependency to support version 5.0
+* Fixed version information to use VERSION constant from version.rb
+
 ## 0.2.1 (2025-04-24)
 
 * Added Detector gem version to CLI output

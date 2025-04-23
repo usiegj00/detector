@@ -115,6 +115,10 @@ module Detector
         "psql"
       end
       
+      def protocol_type
+        :tcp
+      end
+      
       def user_access_level
         return nil unless connection
         

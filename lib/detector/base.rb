@@ -320,11 +320,40 @@ module Detector
     
     def ping
       return nil unless valid?
-      tcp_test
+      transport?
+    end
+    
+    def transport?
+      protocol_type == :tcp ? tcp_test : udp_test
+    end
+    
+    # Should be implemented by subclasses
+    def protocol_type
+      :tcp # Default to TCP
     end
     
     def tcp_test
-      TCPSocket.new(ip, port).present? rescue nil
+      return nil unless ip && port
+      begin
+        socket = TCPSocket.new(ip, port)
+        socket.close
+        true
+      rescue => e
+        nil
+      end
+    end
+    
+    def udp_test
+      return nil unless ip && port
+      begin
+        socket = UDPSocket.new
+        socket.connect(ip, port)
+        socket.send("", 0) # Send empty packet as probe
+        socket.close
+        true
+      rescue => e
+        nil
+      end
     end
     
     def table_count
