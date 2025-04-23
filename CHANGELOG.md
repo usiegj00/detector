@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.1 (2025-04-24)
+## 0.2.0 (2025-04-24)
 
 * Added user access level detection for all database types
 * Added logger and ostruct dependencies for Ruby 3.5.0 compatibility
