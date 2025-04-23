@@ -25,6 +25,18 @@ if detector.infrastructure
   puts "Infrastructure: #{detector.infrastructure}"
 end
 
+if detector.geography
+  puts "Location: #{detector.geography}"
+end
+
+if detector.region
+  puts "Region: #{detector.region}"
+end
+
+if detector.asn
+  puts "ASN: #{detector.asn}"
+end
+
 if detector.databases?
   db_count = detector.database_count
   puts "\nDatabases: #{db_count}"

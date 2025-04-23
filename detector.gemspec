@@ -29,6 +29,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "resolv", "~> 0.2.1"
   spec.add_dependency "bigdecimal", "~> 3.1"
   spec.add_dependency "net-smtp", "~> 0.3.3"
+  spec.add_dependency "geocoder", "~> 1.8"
   
   spec.add_development_dependency "rspec", "~> 3.10"
 end 

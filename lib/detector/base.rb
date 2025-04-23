@@ -1,4 +1,5 @@
 require 'socket'
+require 'geocoder'
 
 module Detector
   class Base
@@ -94,6 +95,32 @@ module Detector
       nil
     end
     
+    def geo
+      return nil unless valid?
+      @geo ||= Geocoder.search(ip).first
+    end
+    
+    # Lookup the location for the IP:
+    def geography
+      return nil unless valid?
+      "#{geo.city}, #{geo.region}, #{geo.country}" if geo
+    end
+    
+    def region
+      return nil unless valid?
+      case geo&.data&.dig('city')&.downcase
+      when 'ashburn'
+        "us-east-1"
+      else
+        geo&.data&.dig('region')
+      end
+    end
+    
+    def asn
+      return nil unless valid?
+      geo&.data&.dig('org')&.split(" ")&.first
+    end
+    
     def connection?
       connection.present?
     end
@@ -150,7 +177,7 @@ module Detector
         "Google Cloud Platform"
       when /azure/, /azurewebsites/, /cloudapp\./, /windows\.net/
         "Microsoft Azure"
-      when /antimony/, /avetogo/, /build\.io/
+      when /antimony/
         "Build.io"
       when /heroku/, /herokuapp/
         "Heroku"
