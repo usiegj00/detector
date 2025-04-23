@@ -187,6 +187,26 @@ module Detector
           nil
         end
       end
+      
+      def estimated_row_count(table:, database: nil)
+        return nil unless connection
+        
+        # Use current database if none specified
+        db_name = database || info['database']
+        return nil unless db_name
+        
+        begin
+          # Query information_schema.tables for the statistics-based row estimate
+          result = connection.query("SELECT table_rows AS estimate 
+                                   FROM information_schema.tables 
+                                   WHERE table_schema = '#{db_name}' 
+                                   AND table_name = '#{table}'").first
+          
+          result ? result['estimate'].to_i : nil
+        rescue => e
+          nil
+        end
+      end
     end
   end
   

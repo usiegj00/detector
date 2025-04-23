@@ -7,15 +7,39 @@ if ARGV.empty?
   puts "Detector v#{Detector::VERSION}"
   puts "Usage: detector <URI>"
   puts "Example: detector \"postgres://user:pass@host:port/dbname\""
+  puts "Additional options:"
+  puts "  --table=TABLE_NAME [--database=DB_NAME] : Estimate row count for a specific table"
   exit 1
 end
 
 uri = ARGV[0]
+options = {}
+
+# Parse command-line options
+ARGV[1..-1].each do |arg|
+  if arg.start_with?('--table=')
+    options[:table] = arg.split('=', 2)[1]
+  elsif arg.start_with?('--database=')
+    options[:database] = arg.split('=', 2)[1]
+  end
+end
+
 detector = Detector.detect(uri)
 
 if detector.nil?
   puts "Invalid or unsupported URI: #{uri}"
   exit 1
+end
+
+# If table is specified, show row count estimate and exit
+if options[:table]
+  count = detector.estimated_row_count(table: options[:table], database: options[:database])
+  if count
+    puts "Estimated row count for #{options[:table]}: #{count}"
+  else
+    puts "Unable to estimate row count for #{options[:table]}"
+  end
+  exit 0
 end
 
 puts "Detector v#{Detector::VERSION}"

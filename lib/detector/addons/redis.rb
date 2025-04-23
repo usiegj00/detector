@@ -1,4 +1,5 @@
 require 'redis'
+require 'timeout'
 
 module Detector
   module Addons
@@ -167,6 +168,45 @@ module Detector
           end
           
           false
+        rescue => e
+          nil
+        end
+      end
+      
+      def estimated_row_count(table:, database: nil)
+        return nil unless connection
+        
+        # In Redis, the database is a number (0-15 typically) and "table" concept is closest to key patterns
+        # We'll interpret table parameter as a key pattern
+        
+        begin
+          # Set the database if specified
+          if database
+            # Redis db numbers are integers
+            db_num = database.to_s.gsub(/[^0-9]/, '').to_i
+            connection.select(db_num) rescue nil
+          end
+          
+          # Count keys matching the pattern (consider this a heuristic approximation)
+          # Use SCAN for larger datasets, as it doesn't block the server
+          count = 0
+          cursor = "0"
+          
+          begin
+            # Timeout after a reasonable time to prevent long-running operations
+            Timeout.timeout(5) do
+              loop do
+                cursor, keys = connection.scan(cursor, match: table, count: 1000)
+                count += keys.size
+                break if cursor == "0"
+              end
+            end
+          rescue Timeout::Error
+            # If we time out, return the partial count with a note
+            return count
+          end
+          
+          count
         rescue => e
           nil
         end

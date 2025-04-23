@@ -204,6 +204,39 @@ module Detector
           nil
         end
       end
+      
+      def estimated_row_count(table:, database: nil)
+        return nil unless connection
+        
+        # Use the current database if none is specified
+        db_name = database || current_database
+        
+        begin
+          # If we need to query a different database, temporarily connect to it
+          if db_name != current_database
+            # Create a temporary connection to the specified database
+            temp_conn = PG::Connection.new(host: host, port: port, user: uri.user, 
+                                         password: uri.password, dbname: db_name) rescue nil
+            return nil unless temp_conn
+            
+            # Use pg_class.reltuples for a fast, statistics-based row estimate
+            count = temp_conn.exec("SELECT reltuples::bigint AS estimate 
+                                  FROM pg_class 
+                                  WHERE relname = '#{table}'").first
+            temp_conn.close
+            return count ? count['estimate'].to_i : nil
+          end
+          
+          # Query the current database using pg_class.reltuples
+          count = connection.exec("SELECT reltuples::bigint AS estimate 
+                                FROM pg_class 
+                                WHERE relname = '#{table}'").first
+          
+          count ? count['estimate'].to_i : nil
+        rescue => e
+          nil
+        end
+      end
     end
   end
   

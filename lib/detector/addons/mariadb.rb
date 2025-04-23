@@ -108,6 +108,9 @@ module Detector
         
         access_level
       end
+      
+      # MariaDB inherits the estimated_row_count method from MySQL, but we might want to override
+      # with MariaDB-specific optimizations or different statistics approaches in the future
     end
   end
   

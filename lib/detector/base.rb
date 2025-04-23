@@ -232,5 +232,9 @@ module Detector
       return nil unless connection_count && connection_limit && connection_limit > 0
       (connection_count.to_f / connection_limit.to_f * 100).round(1)
     end
+    
+    def estimated_row_count(table:, database: nil)
+      nil
+    end
   end
 end 
