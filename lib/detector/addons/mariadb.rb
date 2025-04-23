@@ -179,12 +179,43 @@ module Detector
         end
       end
       
+      def database_count
+        # Cache database count to avoid repeated queries
+        return @cache[:database_count] if @cache[:database_count]
+        
+        # If we have databases from cache, use the count
+        if @cache[:databases]
+          @cache[:database_count] = @cache[:databases].size
+          return @cache[:database_count]
+        end
+        
+        # If no connection is available but we know the database name
+        if connection.nil? && uri.path
+          @cache[:database_count] = 1
+          return @cache[:database_count]
+        end
+        
+        # Try to query the database
+        return nil unless connection
+        
+        begin
+          @cache[:database_count] = connection.query("SELECT COUNT(*) AS count FROM information_schema.SCHEMATA WHERE schema_name NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')").first['count']
+          return @cache[:database_count]
+        rescue => e
+          puts "Error getting database count: #{e.message}" if ENV['DETECTOR_DEBUG']
+          nil
+        end
+      end
+      
       def tables(database_name)
+        # Cache tables to avoid repeated queries
+        @tables ||= {}
+        return @tables[database_name] if @tables[database_name]
+        
         return [] unless connection
         
         begin
-          @tables ||= {}
-          @tables[database_name] ||= connection.query("SELECT 
+          @tables[database_name] = connection.query("SELECT 
                                                  table_name AS name, 
                                                  IFNULL(FORMAT((data_length + index_length) / 1024 / 1024, 2), '0.00') AS size_mb,
                                                  IFNULL((data_length + index_length), 0) AS raw_size,
@@ -199,6 +230,7 @@ module Detector
               row_count: row['row_count'].to_i 
             }
           end
+          return @tables[database_name]
         rescue => e
           puts "Error getting tables for #{database_name}: #{e.message}"
           []
