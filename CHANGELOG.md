@@ -2,6 +2,7 @@
 
 ## 0.1.1 (2025-04-24)
 
+* Enhanced region detection with support for 70+ cloud regions from AWS, Azure, and GCP
 * Added geographic location and ASN detection
 * Added infrastructure detection for 30+ cloud providers
 * Updated Redis dependency to support version 5.0
