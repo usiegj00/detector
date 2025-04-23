@@ -1,0 +1,44 @@
+#!/usr/bin/env ruby
+
+require "bundler/setup"
+require "detector"
+
+if ARGV.empty?
+  puts "Usage: detector <URI>"
+  puts "Example: detector \"postgres://user:pass@host:port/dbname\""
+  exit 1
+end
+
+uri = ARGV[0]
+detector = Detector.detect(uri)
+
+if detector.nil?
+  puts "Invalid or unsupported URI: #{uri}"
+  exit 1
+end
+
+puts "Detected: #{detector.kind}"
+puts "Version: #{detector.version}"
+puts "Host: #{detector.host}:#{detector.port}"
+
+if detector.databases?
+  db_count = detector.database_count
+  puts "\nDatabases: #{db_count}"
+  
+  if db_count && db_count > 0
+    dbs = detector.databases.first(3)
+    dbs.each do |db|
+      db_name = db[:name]
+      puts "\nDatabase: #{db_name} (#{db[:size]})"
+      
+      if detector.tables?
+        tables = detector.tables(db_name).first(3) 
+        puts "  Tables: #{detector.table_count(db_name)}"
+        
+        tables.each do |table|
+          puts "    - #{table[:name]}: #{table[:row_count]} rows (#{table[:size]})"
+        end
+      end
+    end
+  end
+end 
