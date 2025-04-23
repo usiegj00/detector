@@ -299,7 +299,6 @@ module Detector
         return "ap-northeast-2"
       elsif country == 'Hong Kong'
         return "ap-east-1"
-        end
       end
       
       # Final fallback
