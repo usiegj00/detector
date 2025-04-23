@@ -1,12 +1,11 @@
 # Changelog
 
-## 0.1.1 (2024-06-11)
+## 0.1.1 (2025-04-24)
 
 * Updated Redis dependency to support version 5.0
 * Fixed version information to use VERSION constant from version.rb
-* Improved database/table handling in MariaDB adapter
 
-## 0.1.0 (2024-06-11)
+## 0.1.0 (2025-04-24)
 
 * Initial release
 * Support for PostgreSQL, MySQL, MariaDB, Redis and SMTP
