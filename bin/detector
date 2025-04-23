@@ -4,6 +4,7 @@ require "bundler/setup"
 require "detector"
 
 if ARGV.empty?
+  puts "Detector v#{Detector::VERSION}"
   puts "Usage: detector <URI>"
   puts "Example: detector \"postgres://user:pass@host:port/dbname\""
   exit 1
@@ -17,6 +18,7 @@ if detector.nil?
   exit 1
 end
 
+puts "Detector v#{Detector::VERSION}"
 puts "Detected: #{detector.kind}"
 puts "Version: #{detector.version}"
 puts "Host: #{detector.host}:#{detector.port}"
