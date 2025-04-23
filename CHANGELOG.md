@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 (2025-04-24)
+
+* Added Detector gem version to CLI output
+
 ## 0.2.0 (2025-04-24)
 
 * Added user access level detection for all database types
