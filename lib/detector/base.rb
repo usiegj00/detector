@@ -233,6 +233,15 @@ module Detector
       (connection_count.to_f / connection_limit.to_f * 100).round(1)
     end
     
+    def connection_info
+      # Default implementation for databases without user-specific limits
+      return nil unless connection_count && connection_limit
+      {
+        connection_count: { user: connection_count, global: connection_count },
+        connection_limits: { user: connection_limit, global: connection_limit }
+      }
+    end
+    
     def estimated_row_count(table:, database: nil)
       nil
     end

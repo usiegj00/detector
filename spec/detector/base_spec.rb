@@ -63,4 +63,63 @@ RSpec.describe Detector::Base do
       expect(base.replication_available?).to be_nil
     end
   end
+  
+  describe "#estimated_row_count" do
+    it "returns nil by default" do
+      expect(base.estimated_row_count(table: 'test')).to be_nil
+    end
+  end
+  
+  describe "#close" do
+    it "does nothing by default" do
+      # The base implementation just returns nil, so make sure it doesn't error
+      expect { base.close }.not_to raise_error
+    end
+  end
+  
+  describe "#connection_count" do
+    it "returns nil by default" do
+      expect(base.connection_count).to be_nil
+    end
+  end
+  
+  describe "#connection_limit" do
+    it "returns nil by default" do
+      expect(base.connection_limit).to be_nil
+    end
+  end
+  
+  describe "#connection_usage_percentage" do
+    context "when connection stats are available" do
+      it "calculates the percentage correctly" do
+        allow(base).to receive(:connection_count).and_return(50)
+        allow(base).to receive(:connection_limit).and_return(100)
+        
+        expect(base.connection_usage_percentage).to eq(50.0)
+      end
+    end
+    
+    context "when connection stats are not available" do
+      it "returns nil when connection_count is missing" do
+        allow(base).to receive(:connection_count).and_return(nil)
+        allow(base).to receive(:connection_limit).and_return(100)
+        
+        expect(base.connection_usage_percentage).to be_nil
+      end
+      
+      it "returns nil when connection_limit is missing" do
+        allow(base).to receive(:connection_count).and_return(50)
+        allow(base).to receive(:connection_limit).and_return(nil)
+        
+        expect(base.connection_usage_percentage).to be_nil
+      end
+      
+      it "returns nil when connection_limit is zero" do
+        allow(base).to receive(:connection_count).and_return(50)
+        allow(base).to receive(:connection_limit).and_return(0)
+        
+        expect(base.connection_usage_percentage).to be_nil
+      end
+    end
+  end
 end 

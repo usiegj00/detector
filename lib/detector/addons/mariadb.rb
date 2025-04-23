@@ -53,6 +53,27 @@ module Detector
         end
       end
       
+      def connection_info
+        return nil unless connection
+        begin
+          user_limit = connection.query("SELECT @@max_user_connections AS `limit`").first['limit'].to_i
+          user_count = connection.query("SELECT COUNT(*) AS count FROM information_schema.PROCESSLIST WHERE user = USER()").first['count'].to_i
+          global_limit = connection.query("SELECT @@max_connections AS `limit`").first['limit'].to_i
+          global_count = connection.query("SELECT COUNT(*) AS count FROM information_schema.PROCESSLIST").first['count'].to_i
+          
+          # If user limit is 0, it means no specific per-user limit (use global)
+          user_limit = global_limit if user_limit == 0
+          
+          {
+            connection_count: { user: user_count, global: global_count },
+            connection_limits: { user: user_limit, global: global_limit }
+          }
+        rescue => e
+          puts "Error getting connection info: #{e.message}"
+          nil
+        end
+      end
+      
       def tables(database_name)
         return [] unless connection
         

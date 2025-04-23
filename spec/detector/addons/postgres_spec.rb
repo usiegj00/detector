@@ -79,4 +79,69 @@ RSpec.describe Detector::Addons::Postgres do
       end
     end
   end
+  
+  describe "#estimated_row_count" do
+    context "when querying the current database" do
+      it "returns the estimated row count" do
+        connection = double
+        count_result = {"estimate" => "1000"}
+        
+        allow(detector).to receive(:connection).and_return(connection)
+        allow(detector).to receive(:current_database).and_return("mydb")
+        allow(connection).to receive(:exec)
+          .with("SELECT reltuples::bigint AS estimate \n                                FROM pg_class \n                                WHERE relname = 'users'")
+          .and_return([count_result])
+        
+        expect(detector.estimated_row_count(table: "users")).to eq(1000)
+      end
+    end
+    
+    context "when an error occurs" do
+      it "returns nil" do
+        connection = double
+        allow(detector).to receive(:connection).and_return(connection)
+        allow(detector).to receive(:current_database).and_return("mydb")
+        allow(connection).to receive(:exec).and_raise(PG::Error)
+        
+        expect(detector.estimated_row_count(table: "users")).to be_nil
+      end
+    end
+  end
+  
+  describe "#close" do
+    context "when connection exists" do
+      it "closes and clears the connection" do
+        connection = double
+        
+        # Directly stub the instance variable
+        detector.instance_variable_set(:@conn, connection)
+        
+        # Expect close to be called
+        expect(connection).to receive(:close)
+        
+        detector.close
+        
+        # Verify the connection was cleared
+        expect(detector.instance_variable_get(:@conn)).to be_nil
+      end
+    end
+    
+    context "when connection is nil" do
+      it "handles nil connection gracefully" do
+        detector.instance_variable_set(:@conn, nil)
+        expect { detector.close }.not_to raise_error
+      end
+    end
+    
+    context "when close raises an error" do
+      it "rescues the error" do
+        connection = double
+        detector.instance_variable_set(:@conn, connection)
+        
+        allow(connection).to receive(:close).and_raise(StandardError)
+        
+        expect { detector.close }.not_to raise_error
+      end
+    end
+  end
 end 

@@ -48,7 +48,10 @@ puts "Detected: #{detector.kind}"
 puts "Version: #{detector.version}"
 puts "Host: #{detector.host}:#{detector.port}"
 
-if detector.connection_count && detector.connection_limit
+if detector.respond_to?(:connection_info) && detector.connection_info
+  conn_info = detector.connection_info
+  puts "Connections: global #{conn_info[:connection_count][:global]}/#{conn_info[:connection_limits][:global]} (user #{conn_info[:connection_count][:user]}/#{conn_info[:connection_limits][:user]})"
+elsif detector.connection_count && detector.connection_limit
   usage = detector.connection_usage_percentage
   puts "Connections: #{detector.connection_count}/#{detector.connection_limit} (#{usage}%)"
 end

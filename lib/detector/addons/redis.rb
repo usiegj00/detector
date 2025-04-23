@@ -69,6 +69,22 @@ module Detector
         info['maxclients'].to_i rescue 0
       end
       
+      def connection_info
+        return nil unless info
+        begin
+          # Redis doesn't have per-user connection limits, so user = global
+          global_count = info['connected_clients'].to_i rescue 0
+          global_limit = info['maxclients'].to_i rescue 0
+          
+          {
+            connection_count: { user: global_count, global: global_count },
+            connection_limits: { user: global_limit, global: global_limit }
+          }
+        rescue => e
+          nil
+        end
+      end
+      
       def cli_name
         "redis-cli"
       end

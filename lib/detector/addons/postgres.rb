@@ -146,6 +146,28 @@ module Detector
         connection.exec("SELECT current_setting('max_connections')").first['current_setting'].to_i
       end
       
+      def connection_info
+        return nil unless connection
+        begin
+          global_limit = connection.exec("SELECT current_setting('max_connections')").first['current_setting'].to_i
+          global_count = connection.exec("SELECT count(*) FROM pg_stat_activity").first['count'].to_i
+          
+          # For PostgreSQL user connections - depends on per-user limits if set
+          user_limit_result = connection.exec("SELECT rolconnlimit FROM pg_roles WHERE rolname = current_user").first
+          user_limit = user_limit_result['rolconnlimit'].to_i
+          user_limit = global_limit if user_limit <= 0 # If unlimited, use global limit
+          
+          user_count = connection.exec("SELECT count(*) FROM pg_stat_activity WHERE usename = current_user").first['count'].to_i
+          
+          {
+            connection_count: { user: user_count, global: global_count },
+            connection_limits: { user: user_limit, global: global_limit }
+          }
+        rescue => e
+          nil
+        end
+      end
+      
       def cli_name
         "psql"
       end

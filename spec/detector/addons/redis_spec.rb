@@ -85,4 +85,77 @@ RSpec.describe Detector::Addons::Redis do
       end
     end
   end
+
+  describe "#estimated_row_count" do
+    context "when keys are found" do
+      it "returns the count of matching keys" do
+        connection = double
+        
+        allow(detector).to receive(:connection).and_return(connection)
+        allow(connection).to receive(:scan).with("0", match: "user:*", count: 1000).and_return(["0", ["user:1", "user:2", "user:3"]])
+        
+        expect(detector.estimated_row_count(table: "user:*")).to eq(3)
+      end
+    end
+    
+    context "when using a specific database" do
+      it "selects the database before counting" do
+        connection = double
+        
+        allow(detector).to receive(:connection).and_return(connection)
+        expect(connection).to receive(:select).with(2)
+        allow(connection).to receive(:scan).with("0", match: "user:*", count: 1000).and_return(["0", ["user:1", "user:2"]])
+        
+        expect(detector.estimated_row_count(table: "user:*", database: "2")).to eq(2)
+      end
+    end
+    
+    context "when an error occurs" do
+      it "returns nil" do
+        connection = double
+        
+        allow(detector).to receive(:connection).and_return(connection)
+        allow(connection).to receive(:scan).and_raise(Redis::ConnectionError)
+        
+        expect(detector.estimated_row_count(table: "user:*")).to be_nil
+      end
+    end
+  end
+  
+  describe "#close" do
+    context "when connection exists" do
+      it "quits and clears the connection" do
+        connection = double
+        
+        # Directly stub the instance variable
+        detector.instance_variable_set(:@conn, connection)
+        
+        # Expect quit to be called (Redis uses quit instead of close)
+        expect(connection).to receive(:quit)
+        
+        detector.close
+        
+        # Verify the connection was cleared
+        expect(detector.instance_variable_get(:@conn)).to be_nil
+      end
+    end
+    
+    context "when connection is nil" do
+      it "handles nil connection gracefully" do
+        detector.instance_variable_set(:@conn, nil)
+        expect { detector.close }.not_to raise_error
+      end
+    end
+    
+    context "when quit raises an error" do
+      it "rescues the error" do
+        connection = double
+        detector.instance_variable_set(:@conn, connection)
+        
+        allow(connection).to receive(:quit).and_raise(Redis::ConnectionError)
+        
+        expect { detector.close }.not_to raise_error
+      end
+    end
+  end
 end 
