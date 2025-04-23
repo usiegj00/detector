@@ -40,10 +40,13 @@ RSpec.describe Detector::Addons::Postgres do
     context "when replication roles exist" do
       it "returns true" do
         connection = double
+        replication_roles = double
+        
         allow(detector).to receive(:connection).and_return(connection)
         allow(connection).to receive(:exec)
           .with("SELECT rolname, rolreplication FROM pg_roles WHERE rolreplication = true;")
-          .and_return([{"rolname" => "repl_user", "rolreplication" => "t"}])
+          .and_return(replication_roles)
+        allow(replication_roles).to receive(:values).and_return([["repl_user", "t"]])
         
         expect(detector.replication_available?).to be true
       end
@@ -52,10 +55,13 @@ RSpec.describe Detector::Addons::Postgres do
     context "when no replication roles exist" do
       it "returns false" do
         connection = double
+        replication_roles = double
+        
         allow(detector).to receive(:connection).and_return(connection)
         allow(connection).to receive(:exec)
           .with("SELECT rolname, rolreplication FROM pg_roles WHERE rolreplication = true;")
-          .and_return([])
+          .and_return(replication_roles)
+        allow(replication_roles).to receive(:values).and_return([])
         
         expect(detector.replication_available?).to be false
       end

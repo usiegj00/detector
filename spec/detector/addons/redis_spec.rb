@@ -78,7 +78,8 @@ RSpec.describe Detector::Addons::Redis do
       it "returns nil" do
         connection = double
         allow(detector).to receive(:connection).and_return(connection)
-        allow(detector).to receive(:info).and_raise(Redis::ConnectionError)
+        allow(detector).to receive(:info).and_return(nil)
+        allow(connection).to receive(:info).and_raise(Redis::ConnectionError)
         
         expect(detector.replication_available?).to be nil
       end
