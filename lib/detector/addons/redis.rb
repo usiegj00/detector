@@ -13,12 +13,11 @@ module Detector
       end
     
       def connection
-        return @conn if @conn
-        
+        # Create a new connection each time without caching
         if uri.scheme == 'rediss'
-          @conn = ::Redis.new(url: @url, port: uri.port, timeout: 5.0, ssl_params: { verify_mode: OpenSSL::SSL::VERIFY_NONE }) rescue nil
+          ::Redis.new(url: @url, port: uri.port, timeout: 5.0, ssl_params: { verify_mode: OpenSSL::SSL::VERIFY_NONE }) rescue nil
         else
-          @conn = ::Redis.new(url: @url, timeout: 5.0) rescue nil
+          ::Redis.new(url: @url, timeout: 5.0) rescue nil
         end
       end
       

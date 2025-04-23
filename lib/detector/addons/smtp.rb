@@ -12,13 +12,12 @@ module Detector
       end
     
       def connection
-        return @conn if @conn
-        
+        # Create a new connection each time without caching
         begin
-          @conn = Net::SMTP.new(host, port)
-          @conn.open_timeout = 5
-          @conn.start('detector.local', uri.user, uri.password, :login)
-          @conn
+          conn = Net::SMTP.new(host, port)
+          conn.open_timeout = 5
+          conn.start('detector.local', uri.user, uri.password, :login)
+          conn
         rescue => e
           nil
         end

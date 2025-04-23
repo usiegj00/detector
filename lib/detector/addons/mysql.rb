@@ -12,7 +12,8 @@ module Detector
       end
     
       def connection
-        @conn ||= Mysql2::Client.new(
+        # Create a new connection each time without caching
+        Mysql2::Client.new(
           host: host,
           username: uri.user,
           password: uri.password,

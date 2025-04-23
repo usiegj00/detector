@@ -12,7 +12,8 @@ module Detector
       end
     
       def connection
-        @conn ||= PG::Connection.new(uri) rescue nil
+        # Create a new connection each time without caching
+        PG::Connection.new(uri) rescue nil
       end
       
       def version

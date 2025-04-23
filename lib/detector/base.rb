@@ -123,7 +123,22 @@ module Detector
     end
     
     def connection
+      # Default implementation returns nil
+      # Each addon should implement its own connection method
+      # that creates a new connection for each request
       nil
+    end
+    
+    def with_connection
+      conn = connection
+      return yield(nil) unless conn
+      
+      begin
+        result = yield(conn)
+        return result
+      ensure
+        close
+      end
     end
     
     def ping
