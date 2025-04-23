@@ -45,10 +45,20 @@ end
 
 puts "Detector v#{Detector::VERSION}"
 puts "Detected: #{detector.kind}"
+
+if ENV['DETECTOR_DEBUG']
+  puts "Database: #{detector.uri.path ? detector.uri.path.sub(/^\//, '') : 'none'}"
+end
+
 if detector.version
   puts "Version: #{detector.version}"
 else
   puts "Database connection issue: please check credentials and database name"
+  # Check if we have a max_user_connections error
+  if ENV['DETECTOR_DEBUG'] && detector&.connection.nil?
+    puts "Debug: connection method returned nil, trying connection directly for diagnostics..."
+    puts "Credentials: #{detector.uri.user}:**** @ #{detector.host}:#{detector.port}"
+  end
 end
 puts "Host: #{detector.host}:#{detector.port}"
 
@@ -62,6 +72,9 @@ if detector.respond_to?(:connection_info) && detector.connection_info
 elsif detector.connection_count && detector.connection_limit
   usage = detector.connection_usage_percentage
   puts "Connections: #{detector.connection_count}/#{detector.connection_limit} (#{usage}%)"
+else
+  # No connection info available
+  puts "Connections: Unable to retrieve connection information"
 end
 
 if detector.respond_to?(:replication_available?) && !detector.replication_available?.nil?

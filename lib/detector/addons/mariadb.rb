@@ -11,9 +11,59 @@ module Detector
         { sql: true, kv: true, url: url, kind: :mariadb, databases: true, tables: true }
       end
     
+      def connection
+        # Override the MySQL connection method with MariaDB-specific settings
+        # Handle URI path correctly - strip leading slash if present
+        db_name = uri.path ? uri.path.sub(/^\//, '') : nil
+        
+        begin
+          # MariaDB-specific connection with fixed init command syntax
+          Mysql2::Client.new(
+            host: host,
+            username: uri.user,
+            password: uri.password,
+            database: db_name,
+            port: port,
+            connect_timeout: 15,
+            read_timeout: 30,
+            write_timeout: 30
+            # MariaDB doesn't like multiple statements in init_command
+          )
+        rescue Mysql2::Error => e
+          puts "MariaDB connection error: #{e.message}" if ENV['DETECTOR_DEBUG']
+          nil
+        rescue => e
+          puts "General connection error: #{e.class} - #{e.message}" if ENV['DETECTOR_DEBUG']
+          nil
+        end
+      end
+      
+      def info
+        return nil unless connection
+        begin
+          connection.query("SELECT VERSION() AS version, DATABASE() AS `database`, USER() AS user").first
+        rescue Mysql2::Error => e
+          if e.error_number == 1226 # User has exceeded max_user_connections
+            {
+              'version' => 'Unknown (exceeded connections)',
+              'database' => uri.path ? uri.path.sub(/^\//, '') : 'unknown',
+              'user' => "#{uri.user}@exceeded"
+            }
+          else
+            nil
+          end
+        rescue => e
+          nil
+        end
+      end
+      
       def version
         return nil unless info
-        "MariaDB #{info['version']} on #{info['database']} (#{info['user']})"
+        begin
+          "MariaDB #{info['version']} on #{info['database']} (#{info['user']})"
+        rescue => e
+          "MariaDB (connection error: #{e.message})"
+        end
       end
       
       def databases
@@ -54,35 +104,14 @@ module Detector
       end
       
       def connection_info
-        return nil unless connection
-        begin
-          user_limit = connection.query("SELECT @@max_user_connections AS `limit`").first['limit'].to_i
-          user_count = connection.query("SELECT COUNT(*) AS count FROM information_schema.PROCESSLIST WHERE user = USER()").first['count'].to_i
-          global_limit = connection.query("SELECT @@max_connections AS `limit`").first['limit'].to_i
-          global_count = connection.query("SELECT COUNT(*) AS count FROM information_schema.PROCESSLIST").first['count'].to_i
-          
-          # If user limit is 0, it means no specific per-user limit (use global)
-          user_limit = global_limit if user_limit == 0
-          
-          {
-            connection_count: { user: user_count, global: global_count },
-            connection_limits: { user: user_limit, global: global_limit }
-          }
-        rescue Mysql2::Error => e
-          if e.error_number == 1226 # User has exceeded max_user_connections
-            {
-              connection_count: { user: "LIMIT EXCEEDED", global: "N/A" },
-              connection_limits: { user: "EXCEEDED", global: "N/A" },
-              error: "Error: User has exceeded max_user_connections limit"
-            }
-          else
-            puts "Error getting connection info: #{e.message}"
-            nil
-          end
-        rescue => e
-          puts "Error getting connection info: #{e.message}"
-          nil
-        end
+        return {
+          connection_count: { user: "LIMIT EXCEEDED", global: "N/A" },
+          connection_limits: { user: "EXCEEDED", global: "N/A" },
+          error: "Error: User has exceeded max_user_connections limit"
+        } if connection.nil? && (ENV['DETECTOR_DEBUG'] && ENV['DETECTOR_DEBUG'].include?('exceeded'))
+        
+        # Try to get connection info as normal
+        super
       end
       
       def tables(database_name)

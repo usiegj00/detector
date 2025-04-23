@@ -16,17 +16,26 @@ module Detector
         # Handle URI path correctly - strip leading slash if present
         db_name = uri.path ? uri.path.sub(/^\//, '') : nil
         
-        Mysql2::Client.new(
-          host: host,
-          username: uri.user,
-          password: uri.password,
-          database: db_name,
-          port: port,
-          connect_timeout: 5,
-          read_timeout: 10,
-          write_timeout: 10,
-          init_command: "SET wait_timeout=900; SET interactive_timeout=900;"
-        ) rescue nil
+        begin
+          # Try connection with longer timeouts - fix for MariaDB syntax
+          Mysql2::Client.new(
+            host: host,
+            username: uri.user,
+            password: uri.password,
+            database: db_name,
+            port: port,
+            connect_timeout: 15,
+            read_timeout: 30,
+            write_timeout: 30,
+            init_command: "SET wait_timeout=900; SET interactive_timeout=900"
+          )
+        rescue Mysql2::Error => e
+          puts "MySQL connection error: #{e.message}" if ENV['DETECTOR_DEBUG']
+          nil
+        rescue => e
+          puts "General connection error: #{e.class} - #{e.message}" if ENV['DETECTOR_DEBUG']
+          nil
+        end
       end
       
       def info
