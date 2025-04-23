@@ -68,6 +68,17 @@ module Detector
             connection_count: { user: user_count, global: global_count },
             connection_limits: { user: user_limit, global: global_limit }
           }
+        rescue Mysql2::Error => e
+          if e.error_number == 1226 # User has exceeded max_user_connections
+            {
+              connection_count: { user: "LIMIT EXCEEDED", global: "N/A" },
+              connection_limits: { user: "EXCEEDED", global: "N/A" },
+              error: "Error: User has exceeded max_user_connections limit"
+            }
+          else
+            puts "Error getting connection info: #{e.message}"
+            nil
+          end
         rescue => e
           puts "Error getting connection info: #{e.message}"
           nil

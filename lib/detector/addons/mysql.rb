@@ -18,7 +18,11 @@ module Detector
           username: uri.user,
           password: uri.password,
           database: uri.path[1..-1],
-          port: port
+          port: port,
+          connect_timeout: 5,
+          read_timeout: 10,
+          write_timeout: 10,
+          init_command: "SET wait_timeout=900; SET interactive_timeout=900;"
         ) rescue nil
       end
       
@@ -109,6 +113,16 @@ module Detector
             connection_count: { user: user_count, global: global_count },
             connection_limits: { user: user_limit, global: global_limit }
           }
+        rescue Mysql2::Error => e
+          if e.error_number == 1226 # User has exceeded max_user_connections
+            {
+              connection_count: { user: "LIMIT EXCEEDED", global: "N/A" },
+              connection_limits: { user: "EXCEEDED", global: "N/A" },
+              error: "Error: User has exceeded max_user_connections limit"
+            }
+          else
+            nil
+          end
         rescue => e
           nil
         end
