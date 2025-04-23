@@ -2,6 +2,7 @@
 
 ## 0.1.1 (2025-04-24)
 
+* Added infrastructure detection for 30+ cloud providers
 * Updated Redis dependency to support version 5.0
 * Fixed version information to use VERSION constant from version.rb
 

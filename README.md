@@ -52,6 +52,9 @@ db.host          # => "host"
 db.port          # => 5432
 db.version       # => "PostgreSQL 12.1 on x86_64-pc-linux-gnu, ..."
 
+# Detect infrastructure
+db.infrastructure # => "Amazon Web Services", "Google Cloud Platform", etc.
+
 # Get database stats
 db.database_count  # => 5
 db.databases       # => [{ name: "db1", size: "1.2 GB", ... }, ...]

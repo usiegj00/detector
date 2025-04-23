@@ -21,6 +21,10 @@ puts "Detected: #{detector.kind}"
 puts "Version: #{detector.version}"
 puts "Host: #{detector.host}:#{detector.port}"
 
+if detector.infrastructure
+  puts "Infrastructure: #{detector.infrastructure}"
+end
+
 if detector.databases?
   db_count = detector.database_count
   puts "\nDatabases: #{db_count}"
