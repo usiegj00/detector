@@ -13,11 +13,14 @@ module Detector
     
       def connection
         # Create a new connection each time without caching
+        # Handle URI path correctly - strip leading slash if present
+        db_name = uri.path ? uri.path.sub(/^\//, '') : nil
+        
         Mysql2::Client.new(
           host: host,
           username: uri.user,
           password: uri.password,
-          database: uri.path[1..-1],
+          database: db_name,
           port: port,
           connect_timeout: 5,
           read_timeout: 10,

@@ -45,7 +45,11 @@ end
 
 puts "Detector v#{Detector::VERSION}"
 puts "Detected: #{detector.kind}"
-puts "Version: #{detector.version}"
+if detector.version
+  puts "Version: #{detector.version}"
+else
+  puts "Database connection issue: please check credentials and database name"
+end
 puts "Host: #{detector.host}:#{detector.port}"
 
 if detector.respond_to?(:connection_info) && detector.connection_info
