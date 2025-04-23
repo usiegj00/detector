@@ -1,6 +1,8 @@
+require_relative "lib/detector/version"
+
 Gem::Specification.new do |spec|
   spec.name          = "detector"
-  spec.version       = "0.1.0"
+  spec.version       = Detector::VERSION
   spec.authors = ["Jonathan Siegel"]
   spec.email = ["<248302+usiegj00@users.noreply.github.com>"]
 
@@ -22,7 +24,7 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "uri", "~> 0.11.0"
   spec.add_dependency "pg", "~> 1.4"
-  spec.add_dependency "redis", "~> 4.8"
+  spec.add_dependency "redis", "~> 5.0"
   spec.add_dependency "mysql2", "~> 0.5"
   spec.add_dependency "resolv", "~> 0.2.1"
   spec.add_dependency "bigdecimal", "~> 3.1"
