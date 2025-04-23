@@ -21,6 +21,10 @@ puts "Detected: #{detector.kind}"
 puts "Version: #{detector.version}"
 puts "Host: #{detector.host}:#{detector.port}"
 
+if detector.user_access_level
+  puts "User access level: #{detector.user_access_level}"
+end
+
 if detector.infrastructure
   puts "Infrastructure: #{detector.infrastructure}"
 end

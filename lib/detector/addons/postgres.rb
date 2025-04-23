@@ -114,6 +114,46 @@ module Detector
       def cli_name
         "psql"
       end
+      
+      def user_access_level
+        return nil unless connection
+        
+        is_superuser = connection.exec("SELECT usesuper FROM pg_user WHERE usename = current_user").first["usesuper"] == "t" rescue false
+        is_replication = connection.exec("SELECT rolreplication FROM pg_roles WHERE rolname = current_user").first["rolreplication"] == "t" rescue false
+        roles = connection.exec("SELECT r.rolname FROM pg_roles r JOIN pg_auth_members m ON r.oid = m.roleid JOIN pg_roles u ON m.member = u.oid WHERE u.rolname = current_user").map { |row| row["rolname"] } rescue []
+        
+        create_db = connection.exec("SELECT usecreatedb FROM pg_user WHERE usename = current_user").first["usecreatedb"] == "t" rescue false
+        
+        if is_superuser
+          "Superuser (full access)"
+        elsif is_replication
+          "Replication user (system-level replication access)"
+        elsif create_db
+          "Database creator (can create new databases)"
+        elsif roles.include?("rds_superuser")
+          "RDS Superuser (limited admin privileges)"
+        else
+          # Check if can access system catalogs (higher than regular user)
+          begin
+            connection.exec("SELECT count(*) FROM pg_shadow")
+            "Power user (access to system catalogs)"
+          rescue => e
+            # Check if can create tables in current database
+            begin
+              connection.exec("CREATE TABLE __temp_access_check (id int); DROP TABLE __temp_access_check;")
+              "Regular user (table management)"
+            rescue => e
+              # Check for readonly access
+              begin
+                connection.exec("SELECT current_database()")
+                "Read-only user"
+              rescue => e
+                "Limited access"
+              end
+            end
+          end
+        end
+      end
     end
   end
   

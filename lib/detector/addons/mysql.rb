@@ -89,6 +89,67 @@ module Detector
       def cli_name
         "mysql"
       end
+      
+      def user_access_level
+        return nil unless connection
+        
+        # Get all privileges for current user
+        grants = []
+        begin
+          result = connection.query("SHOW GRANTS FOR CURRENT_USER()")
+          result.each do |row|
+            grants << row.values.first
+          end
+        rescue => e
+          return "Limited access (unable to check privileges)"
+        end
+        
+        grant_text = grants.join(" ")
+        
+        # Check for root/admin privileges
+        if grant_text =~ /ALL PRIVILEGES ON \*\.\* TO/i
+          return "Administrator (all privileges)"
+        end
+        
+        # Check for global privileges
+        if grant_text =~ /GRANT .* ON \*\.\*/i
+          global_privs = []
+          global_privs << "CREATE USER" if grant_text =~ /CREATE USER/i
+          global_privs << "PROCESS" if grant_text =~ /PROCESS/i
+          global_privs << "SUPER" if grant_text =~ /SUPER/i
+          global_privs << "RELOAD" if grant_text =~ /RELOAD/i
+          global_privs << "SHUTDOWN" if grant_text =~ /SHUTDOWN/i
+          
+          if global_privs.include?("CREATE USER") || global_privs.include?("SUPER")
+            return "Power user (#{global_privs.join(", ")})"
+          elsif !global_privs.empty?
+            return "System monitor (#{global_privs.join(", ")})"
+          end
+        end
+        
+        # Check for database-level privileges
+        db_with_all = []
+        if grant_text =~ /ALL PRIVILEGES ON (`[^`]+`|\w+)\./i
+          db_name = $1.gsub(/`/, "")
+          db_with_all << db_name
+        end
+        
+        if !db_with_all.empty?
+          return "Database admin (full access to: #{db_with_all.join(", ")})"
+        end
+        
+        # Check for specific privileges
+        can_write = grant_text =~ /INSERT|UPDATE|DELETE|CREATE|ALTER|DROP/i
+        can_read = grant_text =~ /SELECT/i
+        
+        if can_write
+          "Write access"
+        elsif can_read
+          "Read-only access"
+        else
+          "Limited access"
+        end
+      end
     end
   end
   

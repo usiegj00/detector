@@ -32,6 +32,28 @@ module Detector
       def cli_name
         "telnet"
       end
+      
+      def user_access_level
+        return nil unless connection
+        
+        # For SMTP, limited testing is possible
+        # We know we have authenticated access already if connection exists
+        
+        # Try to validate recipient (admin-level feature)
+        admin_level = false
+        begin
+          connection.vrfy("postmaster")
+          admin_level = true
+        rescue => e
+          admin_level = false
+        end
+        
+        if admin_level
+          "Administrator (VRFY command allowed)"
+        else
+          "Authenticated user (send mail)"
+        end
+      end
     end
   end
   

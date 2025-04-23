@@ -2,6 +2,7 @@
 
 ## 0.1.1 (2025-04-24)
 
+* Added user access level detection for all database types
 * Added logger and ostruct dependencies for Ruby 3.5.0 compatibility
 * Enhanced region detection with support for 70+ cloud regions from AWS, Azure, and GCP
 * Added geographic location and ASN detection

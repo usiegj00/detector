@@ -355,6 +355,11 @@ module Detector
       nil
     end
     
+    def user_access_level
+      return nil unless valid? && connection?
+      "Unknown"
+    end
+    
     def infrastructure
       return nil unless valid?
       

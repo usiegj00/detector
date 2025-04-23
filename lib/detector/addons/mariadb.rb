@@ -80,6 +80,32 @@ module Detector
       def cli_name
         "mariadb"
       end
+      
+      def user_access_level
+        # Start with MySQL access level check
+        access_level = super
+        
+        # Add MariaDB-specific details if needed
+        return access_level unless connection
+        
+        # Check for MariaDB-specific roles (MariaDB 10.0.5+)
+        begin
+          result = connection.query("SELECT 1 FROM information_schema.plugins WHERE plugin_name = 'ROLES'")
+          if result.count > 0
+            roles_result = connection.query("SELECT CURRENT_ROLE()").first
+            current_role = roles_result.values.first
+            
+            # If a role is active, append it to the access level
+            if current_role && current_role != '' && current_role != 'NONE'
+              return "#{access_level} (Role: #{current_role})"
+            end
+          end
+        rescue => e
+          # Role system not available or not accessible to user
+        end
+        
+        access_level
+      end
     end
   end
   

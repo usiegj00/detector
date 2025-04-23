@@ -71,6 +71,82 @@ module Detector
       def cli_name
         "redis-cli"
       end
+      
+      def user_access_level
+        return nil unless connection
+        
+        # Redis 6.0+ supports ACLs, older versions just have auth or no auth
+        redis_version = info['redis_version'].to_s
+        
+        if Gem::Version.new(redis_version) >= Gem::Version.new('6.0.0')
+          begin
+            acl_info = connection.call('ACL', 'LIST')
+            default_user = acl_info.grep(/default/).first
+            
+            if default_user.include?('on') && default_user.include?('nopass')
+              return "Administrator (open access)"
+            elsif default_user.include?('on') && default_user.include?('~*')
+              return "Administrator (password protected)"
+            elsif default_user.include?('allkeys')
+              if default_user.include?('allcommands')
+                return "Full access (all commands, all keys)"
+              else
+                return "Limited command access (all keys)"
+              end
+            else
+              if default_user.include?('reset')
+                "No access (default rights)"
+              else
+                "Custom ACL pattern"
+              end
+            end
+          rescue => e
+            # Try to determine rights by test commands for older Redis
+            self.generic_redis_access_check
+          end
+        else
+          # Older Redis version
+          self.generic_redis_access_check
+        end
+      end
+      
+      def generic_redis_access_check
+        # Check for admin commands
+        admin_access = false
+        begin
+          # Try an admin command (CONFIG GET)
+          connection.call('CONFIG', 'GET', 'maxmemory')
+          admin_access = true
+        rescue => e
+          admin_access = false
+        end
+        
+        # Check for write ability
+        write_access = false
+        begin
+          # Use a random key name to avoid conflicts
+          test_key = "__test_key_#{rand(1000000)}"
+          connection.call('SET', test_key, 'test_value')
+          connection.call('DEL', test_key)
+          write_access = true
+        rescue => e
+          write_access = false
+        end
+        
+        if admin_access
+          "Administrator (config access)"
+        elsif write_access
+          "Regular user (read/write)"
+        else
+          # Try a read command
+          begin
+            connection.call('PING')
+            "Read-only user"
+          rescue => e
+            "Limited access"
+          end
+        end
+      end
     end
   end
   
