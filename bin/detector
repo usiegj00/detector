@@ -48,6 +48,12 @@ puts "Detected: #{detector.kind}"
 
 if ENV['DETECTOR_DEBUG']
   puts "Database: #{detector.uri.path ? detector.uri.path.sub(/^\//, '') : 'none'}"
+  
+  # In debug mode, if the detector has connection_error method, show error details
+  if detector.respond_to?(:connection_error) && detector.connection_error
+    error = detector.connection_error
+    puts "CONNECTION ERROR: #{error[:message]} (#{error[:type]}, code: #{error[:error_number]})"
+  end
 end
 
 if detector.version
@@ -103,26 +109,44 @@ end
 
 if detector.databases?
   db_count = detector.database_count
-  puts "\nDatabases: #{db_count}"
+  puts "\nDatabases: #{db_count || 'Unknown'}"
   
   if db_count && db_count > 0
-    dbs = detector.databases.first(3)
-    dbs.each do |db|
-      db_name = db[:name]
-      puts "\nDatabase: #{db_name} (#{db[:size]})"
-      
-      if detector.tables?
-        if db[:table_count]
-          puts "  Tables: #{db[:table_count]}"
-        else
-          puts "  Tables: #{detector.table_count(db_name)}"
-        end
-        
-        tables = detector.tables(db_name).first(3) 
-        tables.each do |table|
-          puts "    - #{table[:name]}: #{table[:row_count]} rows (#{table[:size]})"
+    begin
+      dbs = detector.databases.first(3)
+      if dbs.empty?
+        puts "  No databases found or access denied"
+      else
+        dbs.each do |db|
+          db_name = db[:name]
+          puts "\nDatabase: #{db_name} (#{db[:size]})"
+          
+          if detector.tables?
+            if db[:table_count]
+              puts "  Tables: #{db[:table_count]}"
+            else
+              puts "  Tables: #{detector.table_count(db_name) || 'Unknown'}"
+            end
+            
+            begin
+              tables = detector.tables(db_name).first(3)
+              if tables.empty?
+                puts "    No tables found or access denied"
+              else
+                tables.each do |table|
+                  puts "    - #{table[:name]}: #{table[:row_count]} rows (#{table[:size]})"
+                end
+              end
+            rescue => e
+              puts "    Error retrieving tables: #{e.message}" if ENV['DETECTOR_DEBUG']
+              puts "    No tables available (access error)"
+            end
+          end
         end
       end
+    rescue => e
+      puts "  Error retrieving databases: #{e.message}" if ENV['DETECTOR_DEBUG']
+      puts "  No database information available (access error)"
     end
   end
 end

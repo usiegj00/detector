@@ -1,3 +1,3 @@
 module Detector
-  VERSION = "0.8.10"
+  VERSION = "0.8.12"
 end 
