@@ -35,4 +35,42 @@ RSpec.describe Detector::Addons::Postgres do
       expect(detector.databases.first[:name]).to eq("db1")
     end
   end
+  
+  describe "#replication_available?" do
+    context "when replication roles exist" do
+      it "returns true" do
+        connection = double
+        allow(detector).to receive(:connection).and_return(connection)
+        allow(connection).to receive(:exec)
+          .with("SELECT rolname, rolreplication FROM pg_roles WHERE rolreplication = true;")
+          .and_return([{"rolname" => "repl_user", "rolreplication" => "t"}])
+        
+        expect(detector.replication_available?).to be true
+      end
+    end
+    
+    context "when no replication roles exist" do
+      it "returns false" do
+        connection = double
+        allow(detector).to receive(:connection).and_return(connection)
+        allow(connection).to receive(:exec)
+          .with("SELECT rolname, rolreplication FROM pg_roles WHERE rolreplication = true;")
+          .and_return([])
+        
+        expect(detector.replication_available?).to be false
+      end
+    end
+    
+    context "when an error occurs" do
+      it "returns nil" do
+        connection = double
+        allow(detector).to receive(:connection).and_return(connection)
+        allow(connection).to receive(:exec)
+          .with("SELECT rolname, rolreplication FROM pg_roles WHERE rolreplication = true;")
+          .and_raise(PG::Error)
+        
+        expect(detector.replication_available?).to be nil
+      end
+    end
+  end
 end 
