@@ -40,20 +40,55 @@ module Detector
           conn.query("SELECT 1")
           conn
         rescue Mysql2::Error => e
-          puts "MariaDB connection error: #{e.message}" if ENV['DETECTOR_DEBUG']
+          error_message = "MariaDB connection error: #{e.message}"
+          error_type = case
+            when e.error_number == 1226 then "max_user_connections exceeded"
+            when e.error_number == 1045 then "access denied (auth failure)"
+            when e.error_number == 1049 then "unknown database '#{db_name}'"
+            when e.error_number == 2003 then "server unavailable or network error"
+            when e.error_number == 2005 then "unknown host"
+            when e.error_number == 2006 then "server gone away"
+            when e.error_number == 2013 then "connection lost"
+            else "general error"
+          end
+          
+          puts "#{error_message} [#{error_type}]" if ENV['DETECTOR_DEBUG']
+          
+          # Store the error information
+          @cache[:connection_error] = {
+            message: e.message,
+            type: error_type,
+            error_number: e.error_number
+          }
+          
+          nil
+        rescue => e
+          # For non-MySQL errors, still capture them
+          puts "General connection error: #{e.class} - #{e.message}" if ENV['DETECTOR_DEBUG']
+          @cache[:connection_error] = {
+            message: e.message,
+            type: "general error",
+            error_number: 0
+          }
           nil
         end
+      end
+      
+      def connection_error
+        @cache[:connection_error]
       end
       
       def info
         # Cache the info to avoid repeated queries
         return @cache[:info] if @cache[:info]
         
-        # If we have a database and user but no connection, return basic info
+        # If we have a database and user but no connection, return basic info with error details
         if connection.nil? && uri.path && uri.user
           db_name = uri.path.sub(/^\//, '')
+          error_msg = connection_error ? " (#{connection_error[:type]})" : " (connection issue)"
+          
           @cache[:info] = {
-            'version' => 'Unknown (connection issue)',
+            'version' => "Unknown#{error_msg}",
             'database' => db_name,
             'user' => "#{uri.user}@remote"
           }
@@ -66,16 +101,21 @@ module Detector
           @cache[:info] = connection.query("SELECT VERSION() AS version, DATABASE() AS `database`, USER() AS user").first
           return @cache[:info]
         rescue Mysql2::Error => e
-          if e.error_number == 1226 # User has exceeded max_user_connections
-            {
-              'version' => 'Unknown (exceeded connections)',
-              'database' => uri.path ? uri.path.sub(/^\//, '') : 'unknown',
-              'user' => "#{uri.user}@exceeded"
-            }
-          else
-            nil
+          error_type = case
+            when e.error_number == 1226 then "max_user_connections exceeded"
+            else "query error"
           end
+          
+          puts "MariaDB info error: #{e.message} [#{error_type}]" if ENV['DETECTOR_DEBUG']
+          
+          db_name = uri.path ? uri.path.sub(/^\//, '') : 'unknown'
+          {
+            'version' => "Unknown (#{error_type})",
+            'database' => db_name,
+            'user' => "#{uri.user}@error"
+          }
         rescue => e
+          puts "General info error: #{e.message}" if ENV['DETECTOR_DEBUG']
           nil
         end
       end
@@ -134,19 +174,19 @@ module Detector
         # Cache connection info to avoid repeated queries
         return @cache[:connection_info] if @cache[:connection_info]
         
-        # If no connection is available but debug mode indicates exceeded connections
-        if connection.nil? && ENV['DETECTOR_DEBUG'] && ENV['DETECTOR_DEBUG'].include?('exceeded')
+        # If no connection is available, provide error information
+        if connection.nil?
+          error_msg = connection_error ? connection_error[:type] : "unknown error"
+          
           @cache[:connection_info] = {
-            connection_count: { user: "LIMIT EXCEEDED", global: "N/A" },
-            connection_limits: { user: "EXCEEDED", global: "N/A" },
-            error: "Error: User has exceeded max_user_connections limit"
+            connection_count: { user: "ERROR", global: "ERROR" },
+            connection_limits: { user: "ERROR", global: "ERROR" },
+            error: "Connection error: #{error_msg}"
           }
           return @cache[:connection_info]
         end
         
         # If connection is available, get actual connection info
-        return nil unless connection
-        
         begin
           user_limit = connection.query("SELECT @@max_user_connections AS `limit`").first['limit'].to_i
           user_count = connection.query("SELECT COUNT(*) AS count FROM information_schema.PROCESSLIST WHERE user = USER()").first['count'].to_i
@@ -162,19 +202,21 @@ module Detector
           }
           return @cache[:connection_info]
         rescue Mysql2::Error => e
-          if e.error_number == 1226 # User has exceeded max_user_connections
-            @cache[:connection_info] = {
-              connection_count: { user: "LIMIT EXCEEDED", global: "N/A" },
-              connection_limits: { user: "EXCEEDED", global: "N/A" },
-              error: "Error: User has exceeded max_user_connections limit"
-            }
-            return @cache[:connection_info]
-          else
-            puts "Error getting connection info: #{e.message}" if ENV['DETECTOR_DEBUG']
-            nil
+          error_type = case
+            when e.error_number == 1226 then "max_user_connections exceeded"
+            else "query error"
           end
+          
+          puts "MariaDB connection_info error: #{e.message} [#{error_type}]" if ENV['DETECTOR_DEBUG']
+          
+          @cache[:connection_info] = {
+            connection_count: { user: "ERROR", global: "ERROR" },
+            connection_limits: { user: "ERROR", global: "ERROR" },
+            error: "Connection error: #{error_type}"
+          }
+          return @cache[:connection_info]
         rescue => e
-          puts "Error getting connection info: #{e.message}" if ENV['DETECTOR_DEBUG']
+          puts "General connection_info error: #{e.message}" if ENV['DETECTOR_DEBUG']
           nil
         end
       end
