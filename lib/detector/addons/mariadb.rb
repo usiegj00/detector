@@ -46,7 +46,7 @@ module Detector
           end
           
           # Sort by size
-          @databases = result.sort_by { |db| -db[:raw_size] }
+          result.sort_by { |db| -db[:raw_size] }
         rescue => e
           puts "Error getting databases: #{e.message}"
           []
