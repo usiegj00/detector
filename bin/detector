@@ -23,6 +23,11 @@ puts "Detected: #{detector.kind}"
 puts "Version: #{detector.version}"
 puts "Host: #{detector.host}:#{detector.port}"
 
+if detector.connection_count && detector.connection_limit
+  usage = detector.connection_usage_percentage
+  puts "Connections: #{detector.connection_count}/#{detector.connection_limit} (#{usage}%)"
+end
+
 if detector.respond_to?(:replication_available?) && !detector.replication_available?.nil?
   puts "Replication: #{detector.replication_available? ? 'Available' : 'Not available'}"
 end

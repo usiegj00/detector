@@ -219,5 +219,18 @@ module Detector
     def replication_available?
       nil
     end
+    
+    def connection_count
+      nil
+    end
+    
+    def connection_limit
+      nil
+    end
+    
+    def connection_usage_percentage
+      return nil unless connection_count && connection_limit && connection_limit > 0
+      (connection_count.to_f / connection_limit.to_f * 100).round(1)
+    end
   end
 end 
