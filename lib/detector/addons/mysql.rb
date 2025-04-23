@@ -207,6 +207,13 @@ module Detector
           nil
         end
       end
+      
+      def close
+        if @conn
+          @conn.close rescue nil
+          @conn = nil
+        end
+      end
     end
   end
   

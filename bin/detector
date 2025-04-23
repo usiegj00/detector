@@ -39,6 +39,7 @@ if options[:table]
   else
     puts "Unable to estimate row count for #{options[:table]}"
   end
+  detector.close
   exit 0
 end
 
@@ -100,4 +101,7 @@ if detector.databases?
       end
     end
   end
-end 
+end
+
+# Make sure to close the connection
+detector.close 

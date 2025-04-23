@@ -236,5 +236,10 @@ module Detector
     def estimated_row_count(table:, database: nil)
       nil
     end
+    
+    def close
+      # Default implementation does nothing
+      # Subclasses should override to close any open connections
+    end
   end
 end 
