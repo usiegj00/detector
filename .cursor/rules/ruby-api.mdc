@@ -1,5 +1,72 @@
 ---
-description:
-globs:
-alwaysApply: false
+description: 
+globs: 
+alwaysApply: true
 ---
+# Detector Ruby API
+
+The Detector gem provides a clean Ruby API for integrating database inspection capabilities into your applications.
+
+## Basic Detection
+
+The main entry point is [Detector.detect](mdc:lib/detector.rb):
+
+```ruby
+require 'detector'
+
+# Create a detector for a database
+detector = Detector.detect("postgres://user:pass@host:port/dbname")
+
+# Check if valid
+puts "Valid database: #{detector.valid?}"
+```
+
+## Core Information Methods
+
+```ruby
+# Basic information
+detector.kind          # => :postgres, :mysql, :redis, etc.
+detector.host          # => "host"
+detector.port          # => 5432
+detector.version       # => "PostgreSQL 12.1 on x86_64-pc-linux-gnu, ..."
+
+# Infrastructure and location
+detector.infrastructure # => "Amazon Web Services"
+detector.geography     # => "Ashburn, Virginia, United States"
+detector.region        # => "us-east-1"
+detector.asn           # => "AS16509"
+
+# Access information
+detector.user_access_level # => "Superuser (full access)"
+```
+
+## Database Inspection
+
+For database systems that support it:
+
+```ruby
+# Get database stats
+detector.database_count  # => 5
+detector.databases       # => [{ name: "db1", size: "1.2 GB", ... }, ...]
+
+# Get table stats for a specific database
+db_name = detector.databases.first[:name]
+detector.table_count(db_name)   # => 42
+detector.tables(db_name)        # => [{ name: "users", row_count: 10000, ... }, ...]
+```
+
+## Connection Management
+
+The gem lets you access the raw database connection if needed:
+
+```ruby
+# Get raw connection
+connection = detector.connection
+
+# PostgreSQL example
+if detector.kind == :postgres
+  # Run custom query
+  result = connection.exec("SELECT COUNT(*) FROM users")
+  puts "User count: #{result.first['count']}"
+end
+```

@@ -1,5 +1,38 @@
 ---
-description:
-globs:
-alwaysApply: false
+description: 
+globs: 
+alwaysApply: true
 ---
+# Detector Gem Overview
+
+Detector is a Ruby gem for quickly analyzing and inspecting various database systems. It serves as a system manager's toolkit to:
+
+1. **Detect database types** from connection URIs
+2. **Provide key metrics** about databases and tables
+3. **Analyze infrastructure** and geographic information
+4. **Check user access levels**
+
+The gem supports various database systems including:
+- PostgreSQL: [lib/detector/addons/postgres.rb](mdc:lib/detector/addons/postgres.rb)
+- MySQL: [lib/detector/addons/mysql.rb](mdc:lib/detector/addons/mysql.rb)
+- MariaDB: [lib/detector/addons/mariadb.rb](mdc:lib/detector/addons/mariadb.rb)
+- Redis: [lib/detector/addons/redis.rb](mdc:lib/detector/addons/redis.rb)
+- SMTP: [lib/detector/addons/smtp.rb](mdc:lib/detector/addons/smtp.rb)
+
+## Usage
+
+The main entry point is [bin/detector](mdc:bin/detector), which provides a CLI for quick inspection of database systems via connection URIs.
+
+```ruby
+# Ruby API example
+detector = Detector.detect("postgres://user:pass@host:port/dbname")
+puts detector.kind          # => :postgres
+puts detector.databases     # => [{ name: "db1", size: "1.2 GB", ... }, ...]
+```
+
+## Architecture
+
+The gem uses a modular architecture with:
+- [lib/detector/base.rb](mdc:lib/detector/base.rb): Base functionality and detection logic
+- Addon modules for specific database types
+- Clean separation between detection and implementation

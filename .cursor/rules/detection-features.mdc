@@ -1,5 +1,49 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
+# Detector Features
+
+The gem provides several powerful detection and analysis features:
+
+## 1. Infrastructure Detection
+
+[Base.infrastructure](mdc:lib/detector/base.rb#Infrastructure) can identify over 30 cloud providers and hosting services by examining hostname patterns:
+
+```ruby
+detector = Detector.detect("postgres://user:pass@ec2-12-34-56-78.amazonaws.com/mydb")
+detector.infrastructure  # => "Amazon Web Services"
+```
+
+## 2. Geographic Location
+
+Several methods provide geographic insights:
+- `geography`: City, region, and country information
+- `region`: Cloud region (AWS, Azure, GCP) based on hostname and location
+- `asn`: Autonomous System Number for network identification
+
+The region detection is particularly advanced, with pattern matching for over 70 cloud regions across major providers.
+
+## 3. User Access Levels
+
+Each addon implements a `user_access_level` method to analyze user permissions:
+
+- PostgreSQL: [postgres.rb#user_access_level](mdc:lib/detector/addons/postgres.rb)
+  - Detects superuser, replication, and read-only status
+  
+- MySQL/MariaDB: [mysql.rb#user_access_level](mdc:lib/detector/addons/mysql.rb)
+  - Analyzes GRANT statements for privileges
+  
+- Redis: [redis.rb#user_access_level](mdc:lib/detector/addons/redis.rb)
+  - Checks ACLs in Redis 6.0+ or functional tests in older versions
+
+## 4. Database Statistics
+
+For database systems, the gem can report:
+- Database counts and sizes
+- Table counts and sizes
+- Row counts for tables
+- Usage statistics
+
+This provides a quick way to assess database systems without direct administrative access.

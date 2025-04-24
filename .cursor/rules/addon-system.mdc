@@ -1,5 +1,56 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
+# Detector Addon System
+
+Detector uses an addon-based architecture to support multiple database systems. Each addon:
+
+1. Registers itself with the base system
+2. Handles a specific database protocol
+3. Provides custom implementations of base methods
+
+## How Addons Work
+
+In [lib/detector/base.rb](mdc:lib/detector/base.rb), the registration system works via:
+
+```ruby
+# Register an addon class
+Base.register_addon(:postgres, Addons::Postgres)
+```
+
+Each addon implements these key methods:
+- `self.handles_uri?(uri)` - Determines if the addon can handle a given URI
+- `self.capabilities_for(url)` - Returns the capabilities of the addon
+- Database-specific connection and query methods
+
+## Available Addons
+
+- **PostgreSQL**: [lib/detector/addons/postgres.rb](mdc:lib/detector/addons/postgres.rb)
+  - SQL database with tables and schemas
+  - ROW counts and table sizes
+  - User privilege detection
+
+- **MySQL**: [lib/detector/addons/mysql.rb](mdc:lib/detector/addons/mysql.rb)
+  - SQL database with tables and schemas
+  - GRANT-based user access levels
+  
+- **MariaDB**: [lib/detector/addons/mariadb.rb](mdc:lib/detector/addons/mariadb.rb)
+  - Extends MySQL with MariaDB-specific features
+  - Adds role-based access control detection
+  
+- **Redis**: [lib/detector/addons/redis.rb](mdc:lib/detector/addons/redis.rb)
+  - Key-value database
+  - ACL-based access levels (Redis 6.0+)
+  
+- **SMTP**: [lib/detector/addons/smtp.rb](mdc:lib/detector/addons/smtp.rb)
+  - Mail server access
+  - Basic authentication checks
+
+## Adding New Addons
+
+To add a new addon, create a new file in `lib/detector/addons/` that:
+1. Inherits from `Detector::Base`
+2. Implements required methods
+3. Registers itself using `Base.register_addon`

@@ -1,5 +1,53 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
+# Detector CLI Usage
+
+The [bin/detector](mdc:bin/detector) CLI provides a simple interface for quick database analysis.
+
+## Basic Usage
+
+```bash
+detector "postgres://user:pass@host:port/dbname"
+```
+
+This will output:
+- Database system type
+- Version information
+- Infrastructure provider
+- Geographic location
+- User access level
+- Databases and their sizes
+- Table counts and sizes
+
+## Example Output
+
+```
+Detected: postgres
+Version: PostgreSQL 12.1 on x86_64-pc-linux-gnu
+Host: db.example.com:5432
+User access level: Regular user (table management)
+Infrastructure: Amazon Web Services
+Location: Ashburn, Virginia, United States
+Region: us-east-1
+
+Databases: 3
+
+Database: db1 (1.2 GB)
+  Tables: 42
+    - users: 10000 rows (500 MB)
+    - orders: 5000 rows (200 MB)
+    - products: 1000 rows (100 MB)
+```
+
+## URI Format Support
+
+The CLI accepts standard URI formats for various systems:
+
+- **PostgreSQL**: `postgres://user:pass@host:port/dbname`
+- **MySQL**: `mysql://user:pass@host:port/dbname`
+- **MariaDB**: `mariadb://user:pass@host:port/dbname`
+- **Redis**: `redis://user:pass@host:port` or `rediss://` for SSL
+- **SMTP**: `smtp://user:pass@host:port` or `smtps://` for SSL
