@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.8.13 (2024-12-20)
 
 * Updated dependency version constraints for Rails 8 compatibility
 * Changed from pessimistic (~>) to optimistic (>=) version constraints to allow newer dependency versions
