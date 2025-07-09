@@ -22,6 +22,10 @@ Or install it yourself as:
 $ gem install detector
 ```
 
+## Rails Compatibility
+
+This gem is compatible with Rails 8 and uses flexible version constraints to work with the latest versions of its dependencies. It can be safely included in Rails 8 projects.
+
 ## Usage
 
 ### CLI

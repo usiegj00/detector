@@ -22,16 +22,16 @@ Gem::Specification.new do |spec|
   spec.executables   = ["detector"]
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "uri", "~> 0.11.0"
-  spec.add_dependency "pg", "~> 1.4"
-  spec.add_dependency "redis", "~> 5.0"
-  spec.add_dependency "mysql2", "~> 0.5"
-  spec.add_dependency "resolv", "~> 0.2.1"
-  spec.add_dependency "bigdecimal", "~> 3.1"
-  spec.add_dependency "net-smtp", "~> 0.3.3"
-  spec.add_dependency "geocoder", "~> 1.8"
-  spec.add_dependency "logger", "~> 1.5"
-  spec.add_dependency "ostruct", "~> 0.5"
+  spec.add_dependency "uri", ">= 0.11.0"
+  spec.add_dependency "pg", ">= 1.4"
+  spec.add_dependency "redis", ">= 5.0"
+  spec.add_dependency "mysql2", ">= 0.5"
+  spec.add_dependency "resolv", ">= 0.2.1"
+  spec.add_dependency "bigdecimal", ">= 3.1"
+  spec.add_dependency "net-smtp", ">= 0.3.3"
+  spec.add_dependency "geocoder", ">= 1.8"
+  spec.add_dependency "logger", ">= 1.5"
+  spec.add_dependency "ostruct", ">= 0.5"
   
   spec.add_development_dependency "rspec", "~> 3.10"
 end 

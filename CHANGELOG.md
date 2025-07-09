@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.13 (2024-12-20)
+
+* Updated dependency version constraints for Rails 8 compatibility
+* Changed from pessimistic (~>) to optimistic (>=) version constraints to allow newer dependency versions
+
 ## 0.3.0 (2025-04-24)
 
 * Improved transport detection architecture with protocol-specific addon methods
